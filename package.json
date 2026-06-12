@@ -1,0 +1,25 @@
+{
+  "name": "usbmusic",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Sistema de audio inteligente autonomo desde USB. Servidor local con UI web para Spotify y YouTube.",
+  "workspaces": [
+    "server",
+    "web"
+  ],
+  "scripts": {
+    "install:all": "npm install --workspaces --include-workspace-root",
+    "dev:server": "npm run dev --workspace=server",
+    "dev:web": "npm run dev --workspace=web",
+    "dev": "node scripts/dev.mjs",
+    "build:web": "npm run build --workspace=web",
+    "build:usb": "node scripts/build-usb.mjs",
+    "start": "npm run start --workspace=server"
+  },
+  "engines": {
+    "node": ">=18.17.0"
+  },
+  "devDependencies": {
+    "vite": "^5.4.2"
+  }
+}

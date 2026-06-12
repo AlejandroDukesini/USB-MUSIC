@@ -1,0 +1,19 @@
+{
+  "name": "@usbmusic/server",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js",
+    "dev": "node --watch src/index.js"
+  },
+  "dependencies": {
+    "@fastify/cookie": "^9.3.1",
+    "@fastify/static": "^7.0.4",
+    "better-sqlite3": "^12.0.0",
+    "fastify": "^4.28.1",
+    "ws": "^8.18.0",
+    "yt-search": "^2.13.1"
+  }
+}

@@ -1,0 +1,5 @@
+# USBMUSIC: regla udev para detectar la insercion de la USB marcada.
+# Esta es una copia de la regla que install-host.sh instala en /etc/udev/rules.d/.
+
+ACTION=="add", SUBSYSTEM=="block", ENV{ID_FS_USAGE}=="filesystem", \
+    RUN+="/bin/sh -c 'sleep 2; for d in /media/*/*/; do [ -f \"$d.usbmusic-volume\" ] && systemctl start usbmusic@$(systemd-escape $d).service; done'"

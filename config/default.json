@@ -1,0 +1,42 @@
+{
+  "server": {
+    "host": "0.0.0.0",
+    "port": 3000,
+    "bindAllInterfaces": true
+  },
+  "auth": {
+    "enabled": true,
+    "defaultAdminPassword": "usbmusic",
+    "sessionTtlHours": 168
+  },
+  "spotify": {
+    "clientId": "",
+    "clientSecret": "",
+    "redirectPath": "/api/spotify/callback",
+    "scopes": [
+      "user-read-email",
+      "user-read-private",
+      "user-library-read",
+      "playlist-read-private",
+      "playlist-read-collaborative",
+      "user-read-playback-state",
+      "user-modify-playback-state",
+      "streaming"
+    ]
+  },
+  "youtube": {
+    "embedMode": true,
+    "ytDlpPath": ""
+  },
+  "audio": {
+    "outputMode": "browser",
+    "preferredQuality": "high"
+  },
+  "data": {
+    "dir": "./data",
+    "dbFile": "usbmusic.db"
+  },
+  "schedules": {
+    "enabled": true
+  }
+}

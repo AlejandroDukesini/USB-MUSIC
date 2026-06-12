@@ -1,0 +1,22 @@
+[Unit]
+Description=USBMUSIC server (servicio basico standalone)
+After=network-online.target
+Wants=network-online.target
+
+# Esta unidad es una alternativa simple a usbmusic@.service para casos en que
+# la app esta instalada en una ruta fija (ej: /opt/usbmusic) en lugar de
+# ejecutarse desde la USB. Para auto-arranque por USB ver install-host.sh.
+
+[Service]
+Type=simple
+Environment=NODE_ENV=production
+Environment=PORT=3000
+WorkingDirectory=/opt/usbmusic/server
+ExecStart=/usr/bin/node /opt/usbmusic/server/src/index.js
+Restart=on-failure
+RestartSec=3
+User=pi
+Group=audio
+
+[Install]
+WantedBy=multi-user.target
