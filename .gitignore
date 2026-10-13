@@ -9,3 +9,6 @@ data/cache
 runtime/node-*
 .DS_Store
 Thumbs.db
+esp32/.pio
+PENDIENTES.txt
+*.piobkp

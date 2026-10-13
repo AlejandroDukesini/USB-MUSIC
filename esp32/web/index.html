@@ -1,0 +1,644 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="color-scheme" content="dark light">
+<title>USBMusic</title>
+<style>
+:root{--bg:#0f1115;--card:#181b22;--card2:#20242d;--text:#e8eaf0;--muted:#9aa1b2;--line:#2a2f3a;--accent:#3ddc97;--accent-ink:#06281a;--warn:#f5b84b;--err:#ff6b6b;--radius:14px}
+:root[data-theme=light]{--bg:#f4f5f8;--card:#fff;--card2:#eef0f4;--text:#161922;--muted:#5d6475;--line:#dde0e7;--accent:#0f9d63;--accent-ink:#fff;--warn:#a86a00;--err:#c62828}
+@media (prefers-color-scheme:light){:root[data-theme=auto]{--bg:#f4f5f8;--card:#fff;--card2:#eef0f4;--text:#161922;--muted:#5d6475;--line:#dde0e7;--accent:#0f9d63;--accent-ink:#fff;--warn:#a86a00;--err:#c62828}}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--text);font:15px/1.4 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+body{padding-bottom:calc(64px + env(safe-area-inset-bottom))}
+button,input,select{font:inherit;color:inherit}
+button{background:var(--card2);border:1px solid var(--line);border-radius:10px;padding:8px 12px;cursor:pointer;min-height:40px}
+button:hover{border-color:var(--muted)}
+button:disabled{opacity:.5;cursor:default}
+button.primary{background:var(--accent);color:var(--accent-ink);border-color:transparent;font-weight:600}
+button.danger{color:var(--err)}
+button.icon{min-width:40px;padding:6px 8px}
+input[type=text],input[type=password],input[type=url],select{width:100%;background:var(--card2);border:1px solid var(--line);border-radius:10px;padding:9px 11px;min-height:42px}
+input:focus,select:focus,button:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+input[type=range]{width:100%;accent-color:var(--accent)}
+a{color:var(--accent)}
+header{position:sticky;top:0;z-index:5;display:flex;align-items:center;gap:10px;padding:10px 16px;background:var(--bg);border-bottom:1px solid var(--line)}
+header h1{font-size:17px;margin:0;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pill{font-size:12px;padding:3px 8px;border-radius:99px;background:var(--card2);color:var(--muted);white-space:nowrap}
+.pill.ok{color:var(--accent)}.pill.bad{color:var(--err)}.pill.warn{color:var(--warn)}
+main{max-width:760px;margin:0 auto;padding:14px 16px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:14px;margin-bottom:14px}
+.card h2{font-size:15px;margin:0 0 10px}
+.muted{color:var(--muted)}.small{font-size:13px}.err{color:var(--err)}.warn{color:var(--warn)}
+.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.row>.grow{flex:1;min-width:0}
+.stack>*+*{margin-top:10px}
+label{display:block;font-size:13px;color:var(--muted);margin-bottom:4px}
+nav{position:fixed;bottom:0;left:0;right:0;z-index:5;display:flex;background:var(--card);border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom)}
+nav button{flex:1;border:0;border-radius:0;background:none;min-height:56px;font-size:12px;color:var(--muted);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px}
+nav button span{font-size:19px;line-height:1}
+nav button.on{color:var(--accent)}
+.now{display:flex;gap:14px;align-items:center}
+.art{width:72px;height:72px;border-radius:12px;background:var(--card2);display:grid;place-items:center;font-size:30px;flex:none}
+.now .t{font-size:18px;font-weight:600;word-break:break-word}
+.bar{height:6px;background:var(--card2);border-radius:3px;overflow:hidden;margin-top:12px}
+.bar>div{height:100%;background:var(--accent);width:0;transition:width .5s}
+.controls{display:flex;justify-content:center;gap:10px;margin:14px 0 8px}
+.controls button{min-width:52px;min-height:52px;font-size:20px;border-radius:50%}
+.controls button.primary{min-width:64px;min-height:64px;font-size:24px}
+.toggle.on{color:var(--accent);border-color:var(--accent)}
+ul.list{list-style:none;margin:0;padding:0}
+ul.list li{display:flex;align-items:center;gap:6px;padding:7px 0;border-bottom:1px solid var(--line)}
+ul.list li:last-child{border-bottom:0}
+ul.list li.cur .name{color:var(--accent);font-weight:600}
+.name{flex:1;min-width:0;overflow:hidden}
+.name div{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.name .sub{font-size:12px;color:var(--muted)}
+.clickable{cursor:pointer}
+.notice{border-left:3px solid var(--warn);background:var(--card2);padding:10px 12px;border-radius:8px;font-size:13px}
+.embed{width:100%;border:0;border-radius:12px;background:var(--card2)}
+.thumb{width:96px;height:72px;object-fit:cover;border-radius:8px;background:var(--card2);flex:none}
+#toast{position:fixed;left:50%;bottom:76px;transform:translateX(-50%);max-width:90%;background:var(--text);color:var(--bg);padding:10px 14px;border-radius:10px;font-size:14px;z-index:20;display:none}
+#toast.err{background:var(--err);color:#fff}
+.center{max-width:380px;margin:12vh auto 0}
+.spin{display:inline-block;width:14px;height:14px;border:2px solid var(--muted);border-top-color:transparent;border-radius:50%;animation:s 1s linear infinite;vertical-align:-2px}
+@keyframes s{to{transform:rotate(360deg)}}
+[hidden]{display:none!important}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<div id="toast" role="status" aria-live="polite"></div>
+<script>
+"use strict";
+// Panel local de USBMusic (ESP32). Sin dependencias externas.
+
+// ---------- utilidades ----------
+const $app = document.getElementById("app");
+function h(tag, attrs, ...kids) {
+  const el = document.createElement(tag);
+  for (const [k, v] of Object.entries(attrs || {})) {
+    if (v == null || v === false) continue;
+    if (k.startsWith("on")) el.addEventListener(k.slice(2), v);
+    else if (k === "class") el.className = v;
+    else el.setAttribute(k, v === true ? "" : v);
+  }
+  for (const c of kids.flat()) if (c != null && c !== false) el.append(c instanceof Node ? c : String(c));
+  return el;
+}
+const store = {
+  get(k) { try { return localStorage.getItem(k); } catch { return null; } },
+  set(k, v) { try { v == null ? localStorage.removeItem(k) : localStorage.setItem(k, v); } catch {} },
+};
+let toastTimer;
+function toast(msg, isErr) {
+  const t = document.getElementById("toast");
+  t.textContent = msg;
+  t.className = isErr ? "err" : "";
+  t.style.display = "block";
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => (t.style.display = "none"), isErr ? 5000 : 2500);
+}
+const baseName = (p) => p.slice(p.lastIndexOf("/") + 1);
+const stripExt = (n) => { const i = n.lastIndexOf("."); return i > 0 ? n.slice(0, i) : n; };
+const parentDir = (p) => p.slice(0, p.lastIndexOf("/")) || "/";
+const fmtSize = (b) => b > 1048576 ? (b / 1048576).toFixed(1) + " MB" : Math.ceil(b / 1024) + " KB";
+
+// ---------- API ----------
+let token = store.get("usbm_token");
+class ApiError extends Error { constructor(msg, status) { super(msg); this.status = status; } }
+async function api(path, params, method) {
+  const opts = { method: method || (params ? "POST" : "GET"), headers: {}, cache: "no-store" };
+  if (token) opts.headers["X-Token"] = token;
+  if (params) opts.body = new URLSearchParams(params);
+  let res;
+  try { res = await fetch(path, opts); }
+  catch { throw new ApiError("Sin conexión con el dispositivo", 0); }
+  let data = null;
+  try { data = await res.json(); } catch {}
+  if (res.status === 401 && path !== "/api/login") { logoutLocal(); throw new ApiError("La sesión ha caducado", 401); }
+  if (!res.ok) throw new ApiError((data && data.error) || "Error " + res.status, res.status);
+  return data;
+}
+async function act(promise, okMsg) {
+  try { const r = await promise; if (okMsg) toast(okMsg); return r; }
+  catch (e) { toast(e.message, true); return null; }
+}
+function upload(url, file, onProgress) {
+  return new Promise((resolve, reject) => {
+    const x = new XMLHttpRequest();
+    x.open("POST", url);
+    x.setRequestHeader("X-Token", token);
+    x.upload.onprogress = (e) => e.lengthComputable && onProgress(e.loaded / e.total);
+    x.onload = () => {
+      let d = null; try { d = JSON.parse(x.responseText); } catch {}
+      if (x.status === 401) logoutLocal();
+      x.status === 200 && d && d.ok ? resolve(d) : reject(new Error((d && d.error) || "Error " + x.status));
+    };
+    x.onerror = () => reject(new Error("Conexión interrumpida"));
+    const fd = new FormData(); fd.append("file", file, file.name); x.send(fd);
+  });
+}
+
+// ---------- estado ----------
+const S = { status: null, queue: [], queueVersion: -1, online: false, tab: store.get("usbm_tab") || "player", dir: "/music" };
+function applyTheme(t) { document.documentElement.dataset.theme = t || "auto"; }
+applyTheme(store.get("usbm_theme"));
+
+function logoutLocal() {
+  token = null; store.set("usbm_token", null); stopPolling(); renderLogin();
+}
+
+// ---------- sondeo con reconexión ----------
+let pollTimer = null, failures = 0;
+function stopPolling() { clearTimeout(pollTimer); pollTimer = null; }
+function schedulePoll(ms) { clearTimeout(pollTimer); pollTimer = setTimeout(poll, ms); }
+async function poll() {
+  try {
+    const st = await api("/api/status");
+    failures = 0; S.online = true; S.status = st;
+    if (!st.setup) return renderSetup("");
+    if (st.theme && st.theme !== document.documentElement.dataset.theme) { applyTheme(st.theme); store.set("usbm_theme", st.theme); }
+    if (st.queueVersion !== S.queueVersion) await loadQueue();
+    updateHeader(); updatePlayer();
+    schedulePoll(document.hidden ? 10000 : 2000);
+  } catch (e) {
+    if (e.status === 401) return;
+    failures++; S.online = false; updateHeader();
+    schedulePoll(Math.min(1000 * 2 ** failures, 15000));
+  }
+}
+document.addEventListener("visibilitychange", () => { if (!document.hidden && token && pollTimer) schedulePoll(100); });
+async function loadQueue() {
+  const q = await api("/api/queue");
+  S.queue = q.items; S.queueVersion = q.version;
+  if (S.tab === "player") renderQueue();
+}
+const refresh = () => schedulePoll(150);
+
+// ---------- acceso ----------
+async function renderLogin() {
+  stopPolling();
+  let info = null;
+  try { info = await api("/api/info"); } catch {}
+  const pass = h("input", { type: "password", autocomplete: "current-password", required: true, id: "pw" });
+  const msg = h("p", { class: "small err" });
+  const form = h("form", { class: "card stack", onsubmit: async (e) => {
+    e.preventDefault(); msg.textContent = "";
+    try {
+      const r = await api("/api/login", { password: pass.value });
+      token = r.token; store.set("usbm_token", token);
+      r.setup ? start() : renderSetup(pass.value);
+    } catch (err) { msg.textContent = err.message; }
+  } },
+    h("h2", {}, info ? info.device : "USBMusic"),
+    !info && h("p", { class: "small err" }, "No se pudo contactar con el dispositivo. Compruebe que está conectado a su red."),
+    info && !info.setup && h("p", { class: "small muted" }, "Primer uso: escriba la clave inicial que aparece en el monitor serie (115200 baudios) al arrancar la placa."),
+    h("div", {}, h("label", { for: "pw" }, "Clave del panel"), pass),
+    msg, h("button", { class: "primary" }, "Entrar"));
+  $app.replaceChildren(h("main", {}, h("div", { class: "center" }, form)));
+  pass.focus();
+}
+
+function renderSetup(initial) {
+  stopPolling();
+  const c = h("input", { type: "password", autocomplete: "current-password", id: "n0" });
+  c.value = initial || "";
+  const a = h("input", { type: "password", autocomplete: "new-password", minlength: 8, maxlength: 64, id: "n1" });
+  const b = h("input", { type: "password", autocomplete: "new-password", id: "n2" });
+  const msg = h("p", { class: "small err" });
+  $app.replaceChildren(h("main", {}, h("div", { class: "center" }, h("form", { class: "card stack", onsubmit: async (e) => {
+    e.preventDefault(); msg.textContent = "";
+    if (a.value !== b.value) return (msg.textContent = "Las claves no coinciden");
+    try {
+      const r = await api("/api/password", { current: c.value, new: a.value });
+      token = r.token; store.set("usbm_token", token); toast("Clave guardada"); start();
+    } catch (err) { msg.textContent = err.message; }
+  } },
+    h("h2", {}, "Cambie la clave inicial"),
+    h("p", { class: "small muted" }, "La clave inicial se muestra por el puerto serie. Elija una propia (8 a 64 caracteres) para proteger el panel. La clave de la red Wi-Fi propia del equipo se cambia aparte, en Ajustes."),
+    h("div", { hidden: !!initial }, h("label", { for: "n0" }, "Clave inicial"), c),
+    h("div", {}, h("label", { for: "n1" }, "Nueva clave"), a),
+    h("div", {}, h("label", { for: "n2" }, "Repetir clave"), b),
+    msg, h("button", { class: "primary" }, "Guardar")))));
+  a.focus();
+}
+
+// ---------- estructura ----------
+const TABS = [["player", "▶", "Reproducir"], ["library", "🗂", "Música"], ["lists", "☰", "Listas"], ["links", "🔗", "Enlaces"], ["settings", "⚙", "Ajustes"]];
+let $title, $conn, $inet, $view, $nav;
+function start() {
+  $title = h("h1", {}, "USBMusic");
+  $conn = h("span", { class: "pill" }, "…");
+  $inet = h("span", { class: "pill" }, "");
+  $view = h("main", {});
+  $nav = h("nav", {}, TABS.map(([id, ic, label]) => h("button", { "data-tab": id, onclick: () => go(id) }, h("span", { "aria-hidden": "true" }, ic), label)));
+  $app.replaceChildren(h("header", {}, $title, $inet, $conn), $view, $nav);
+  S.queueVersion = -1;
+  go(S.tab);
+  poll();
+}
+function go(tab) {
+  S.tab = tab; store.set("usbm_tab", tab);
+  for (const b of $nav.children) b.classList.toggle("on", b.dataset.tab === tab);
+  ({ player: viewPlayer, library: viewLibrary, lists: viewLists, links: viewLinks, settings: viewSettings })[tab]();
+  window.scrollTo(0, 0);
+}
+function updateHeader() {
+  const st = S.status;
+  if (st) { $title.textContent = st.device; document.title = st.device; }
+  $conn.textContent = S.online ? "Conectado" : "Reconectando…";
+  $conn.className = "pill " + (S.online ? "ok" : "bad");
+  if (!st || !S.online) { $inet.textContent = ""; return; }
+  const n = st.net;
+  $inet.textContent = n.internet ? "Internet" : (n.sta ? "Sin Internet" : "Red propia");
+  $inet.className = "pill " + (n.internet ? "ok" : "warn");
+  $inet.title = n.sta ? "Conectado a " + n.ssid : "Punto de acceso " + n.apSsid;
+}
+
+// ---------- reproductor y cola ----------
+let P = {};
+function viewPlayer() {
+  P.title = h("div", { class: "t" }, "—");
+  P.sub = h("div", { class: "small muted" });
+  P.err = h("div", { class: "small err" });
+  P.bar = h("div");
+  P.play = h("button", { class: "primary", "aria-label": "Reproducir o pausar", onclick: () => cmd("toggle") }, "▶");
+  P.rep = h("button", { class: "icon toggle", title: "Repetir", onclick: cycleRepeat }, "🔁");
+  P.shuf = h("button", { class: "icon toggle", title: "Aleatorio", onclick: () => setMode({ shuffle: S.status.shuffle ? 0 : 1 }) }, "🔀");
+  P.vol = h("input", { type: "range", min: 0, max: 100, "aria-label": "Volumen", oninput: onVolume });
+  P.volLabel = h("span", { class: "small muted" });
+  P.list = h("ul", { class: "list" });
+  P.count = h("span", { class: "small muted" });
+  $view.replaceChildren(
+    h("section", { class: "card" },
+      h("div", { class: "now" }, h("div", { class: "art", "aria-hidden": "true" }, "♪"), h("div", { class: "grow name" }, P.title, P.sub)),
+      h("div", { class: "bar", title: "Progreso aproximado (según bytes leídos)" }, P.bar),
+      h("div", { class: "controls" },
+        h("button", { "aria-label": "Anterior", onclick: () => cmd("prev") }, "⏮"), P.play,
+        h("button", { "aria-label": "Siguiente", onclick: () => cmd("next") }, "⏭")),
+      h("div", { class: "row" }, P.rep, P.shuf, h("button", { class: "icon", title: "Detener", onclick: () => cmd("stop") }, "⏹"),
+        h("span", { "aria-hidden": "true" }, "🔈"), h("div", { class: "grow" }, P.vol), P.volLabel),
+      P.err),
+    h("section", { class: "card" },
+      h("div", { class: "row" }, h("h2", { class: "grow", style: "margin:0" }, "Cola ", P.count),
+        h("button", { onclick: savePlaylistPrompt }, "Guardar como lista"),
+        h("button", { class: "danger", onclick: () => confirm("¿Vaciar la cola?") && act(api("/api/queue/clear", {})).then(refresh) }, "Vaciar")),
+      P.list));
+  renderQueue(); updatePlayer();
+}
+function updatePlayer() {
+  const st = S.status;
+  if (S.tab !== "player" || !st || !P.title) return;
+  const active = st.state !== "stopped";
+  P.title.textContent = active ? st.title : (st.queueLength ? "Detenido" : "Cola vacía");
+  P.sub.textContent = active ? [st.artist, st.state === "paused" ? "En pausa" : ""].filter(Boolean).join(" · ") :
+    (st.queueLength ? "Pulse ▶ para empezar" : "Añada canciones desde la pestaña Música");
+  P.err.textContent = st.error ? "⚠ " + st.error : (st.sd && !st.sd.ok ? "⚠ No se detecta la tarjeta microSD" : "");
+  P.bar.style.width = (st.progress > 0 ? st.progress : 0) + "%";
+  P.play.textContent = st.state === "playing" ? "⏸" : "▶";
+  P.rep.classList.toggle("on", st.repeat > 0);
+  P.rep.textContent = st.repeat === 2 ? "🔂" : "🔁";
+  P.rep.title = ["Repetir: no", "Repetir: toda la cola", "Repetir: una canción"][st.repeat];
+  P.shuf.classList.toggle("on", st.shuffle);
+  if (document.activeElement !== P.vol) P.vol.value = st.volume;
+  P.volLabel.textContent = P.vol.value;
+  for (const li of P.list.children) li.classList.toggle("cur", +li.dataset.i === st.index);
+}
+function renderQueue() {
+  if (!P.list || S.tab !== "player") return;
+  const idx = S.status ? S.status.index : -1, n = S.queue.length;
+  P.count.textContent = "(" + n + ")";
+  if (!n) { P.list.replaceChildren(h("li", { class: "muted small" }, "La cola está vacía.")); return; }
+  P.list.replaceChildren(...S.queue.map((p, i) => h("li", { "data-i": i, class: i === idx ? "cur" : "" },
+    h("div", { class: "name clickable", title: p, onclick: () => cmd("index", { index: i }) },
+      h("div", {}, stripExt(baseName(p))), h("div", { class: "sub" }, parentDir(p))),
+    h("button", { class: "icon", "aria-label": "Subir", disabled: i === 0, onclick: () => move(i, i - 1) }, "↑"),
+    h("button", { class: "icon", "aria-label": "Bajar", disabled: i === n - 1, onclick: () => move(i, i + 1) }, "↓"),
+    h("button", { class: "icon danger", "aria-label": "Quitar", onclick: () => act(api("/api/queue/remove", { index: i })).then(refresh) }, "✕"))));
+}
+const cmd = (action, extra) => act(api("/api/player", { action, ...extra })).then(refresh);
+const move = (from, to) => act(api("/api/queue/move", { from, to })).then(refresh);
+const setMode = (m) => act(api("/api/mode", m)).then(refresh);
+const cycleRepeat = () => setMode({ repeat: ((S.status ? S.status.repeat : 0) + 1) % 3 });
+let volTimer;
+function onVolume() {
+  P.volLabel.textContent = P.vol.value;
+  clearTimeout(volTimer);
+  volTimer = setTimeout(() => act(api("/api/volume", { value: P.vol.value })), 200);
+}
+async function savePlaylistPrompt() {
+  const name = (prompt("Nombre de la lista (1-40 caracteres):") || "").trim();
+  if (name) act(api("/api/playlists/save", { name }), "Lista guardada");
+}
+
+// ---------- biblioteca (microSD) ----------
+function viewLibrary() {
+  const crumbs = h("div", { class: "row small" });
+  const list = h("ul", { class: "list" });
+  const more = h("button", { hidden: true }, "Cargar más");
+  const fileIn = h("input", { type: "file", accept: ".mp3,.wav,audio/mpeg,audio/wav", multiple: true, hidden: true, onchange: () => doUpload(fileIn.files) });
+  const progress = h("div", { class: "small muted" });
+  const addAfter = h("input", { type: "checkbox", id: "addq", checked: true });
+  let offset = 0;
+
+  async function load(append) {
+    if (!append) { offset = 0; list.replaceChildren(h("li", { class: "muted" }, h("span", { class: "spin" }), " Cargando…")); }
+    let r;
+    try { r = await api("/api/files?" + new URLSearchParams({ dir: S.dir, offset })); }
+    catch (e) {
+      list.replaceChildren(h("li", { class: "err small" }, e.message));
+      if (e.status === 404 && S.dir !== "/music") { S.dir = "/music"; load(); }
+      return;
+    }
+    if (!append) list.replaceChildren();
+    offset += r.entries.length;
+    more.hidden = !r.more;
+    renderCrumbs();
+    if (!append && !r.entries.length) list.append(h("li", { class: "muted small" }, "Carpeta vacía. Suba archivos .mp3 o .wav."));
+    for (const e of r.entries) {
+      const p = S.dir + "/" + e.name;
+      list.append(e.dir
+        ? h("li", {}, h("div", { class: "name clickable", onclick: () => { S.dir = p; load(); } }, h("div", {}, "📁 " + e.name)),
+            h("button", { title: "Añadir carpeta a la cola", onclick: () => act(api("/api/queue/add", { dir: p }), "Carpeta añadida").then(refresh) }, "+ Cola"),
+            h("button", { class: "icon danger", "aria-label": "Borrar carpeta", onclick: () => del(p, true) }, "🗑"))
+        : h("li", {}, h("div", { class: "name" }, h("div", {}, stripExt(e.name)), h("div", { class: "sub" }, fmtSize(e.size))),
+            h("button", { title: "Reproducir a continuación", onclick: () => act(api("/api/queue/add", { path: p, next: 1 }), "Sonará a continuación").then(refresh) }, "▶ Sig."),
+            h("button", { title: "Añadir al final de la cola", onclick: () => act(api("/api/queue/add", { path: p }), "Añadida a la cola").then(refresh) }, "+ Cola"),
+            h("button", { class: "icon danger", "aria-label": "Borrar archivo", onclick: () => del(p, false) }, "🗑")));
+    }
+  }
+  function renderCrumbs() {
+    const parts = S.dir.split("/").filter(Boolean);
+    crumbs.replaceChildren(...parts.flatMap((seg, i) => {
+      const p = "/" + parts.slice(0, i + 1).join("/");
+      const b = h("button", { class: "small", onclick: () => { S.dir = p; load(); } }, i ? seg : "Música");
+      return i ? [h("span", { class: "muted" }, "›"), b] : [b];
+    }));
+  }
+  async function del(p, isDir) {
+    if (!confirm((isDir ? "¿Borrar la carpeta (debe estar vacía) " : "¿Borrar definitivamente ") + baseName(p) + "?")) return;
+    if (await act(api("/api/files/delete", { path: p }), "Borrado")) load();
+  }
+  async function doUpload(files) {
+    const added = [];
+    for (let i = 0; i < files.length; i++) {
+      const f = files[i];
+      const label = "(" + (i + 1) + "/" + files.length + ") " + f.name;
+      try {
+        const t0 = Date.now();
+        const r = await upload("/api/upload?" + new URLSearchParams({ dir: S.dir }), f, (x) => {
+          const kbs = (f.size * x / 1024) / Math.max(0.5, (Date.now() - t0) / 1000);
+          progress.textContent = label + " — " + Math.round(x * 100) + "% · " + Math.round(kbs) + " KB/s";
+        });
+        added.push(r.path);
+      } catch (e) { toast(f.name + ": " + e.message, true); }
+    }
+    progress.textContent = added.length ? added.length + " archivo(s) guardado(s) en la microSD." : "";
+    fileIn.value = "";
+    if (added.length && addAfter.checked) await act(api("/api/queue/add", added.map((p) => ["path", p])));
+    load(); refresh();
+  }
+  $view.replaceChildren(
+    h("section", { class: "card stack" },
+      h("h2", {}, "Música en la microSD"),
+      crumbs,
+      h("div", { class: "row" },
+        h("button", { class: "primary", onclick: () => fileIn.click() }, "Subir canciones"),
+        h("button", { onclick: async () => {
+          const name = (prompt("Nombre de la nueva carpeta:") || "").trim();
+          if (name && await act(api("/api/files/mkdir", { dir: S.dir, name }), "Carpeta creada")) load();
+        } }, "Nueva carpeta"),
+        h("button", { onclick: () => act(api("/api/queue/add", { dir: S.dir }), "Carpeta añadida a la cola").then(refresh) }, "Todo a la cola"),
+        fileIn),
+      h("div", { class: "row small" }, addAfter, h("label", { for: "addq", style: "margin:0" }, "Añadir a la cola lo que se suba")),
+      progress,
+      h("p", { class: "small muted" }, "Formatos: MP3 y WAV (PCM). Los archivos se guardan en la tarjeta del ESP32, no en la memoria USB del parlante."),
+      list, more));
+  more.onclick = () => load(true);
+  load();
+}
+
+// ---------- listas ----------
+function viewLists() {
+  const list = h("ul", { class: "list" });
+  async function load() {
+    const r = await act(api("/api/playlists"));
+    if (!r) return;
+    list.replaceChildren(...(r.length ? r.map((p) => h("li", {},
+      h("div", { class: "name" }, h("div", {}, p.name), h("div", { class: "sub" }, p.count + " canciones")),
+      h("button", { onclick: () => act(api("/api/playlists/load", { name: p.name }), "Lista cargada en la cola").then(refresh) }, "Cargar"),
+      h("button", { title: "Añadir al final de la cola", onclick: () => act(api("/api/playlists/load", { name: p.name, mode: "append" }), "Añadida a la cola").then(refresh) }, "+ Cola"),
+      h("button", { class: "icon danger", "aria-label": "Borrar lista", onclick: async () => {
+        if (confirm("¿Borrar la lista " + p.name + "?") && await act(api("/api/playlists/delete", { name: p.name }), "Lista borrada")) load();
+      } }, "🗑"))) : [h("li", { class: "muted small" }, "Aún no hay listas. Prepare la cola y pulse «Guardar».")]));
+  }
+  const name = h("input", { type: "text", maxlength: 40, placeholder: "Nombre de la lista", "aria-label": "Nombre de la lista" });
+  $view.replaceChildren(
+    h("section", { class: "card stack" }, h("h2", {}, "Guardar la cola actual"),
+      h("form", { class: "row", onsubmit: async (e) => {
+        e.preventDefault();
+        if (name.value.trim() && await act(api("/api/playlists/save", { name: name.value.trim() }), "Lista guardada")) { name.value = ""; load(); }
+      } }, h("div", { class: "grow" }, name), h("button", { class: "primary" }, "Guardar")),
+      h("p", { class: "small muted" }, "Si ya existe una lista con ese nombre, se sobrescribe.")),
+    h("section", { class: "card" }, h("h2", {}, "Listas guardadas"), list));
+  load();
+}
+
+// ---------- enlaces de YouTube y Spotify ----------
+// Solo se reconocen identificadores; las URL se reconstruyen aquí y el ESP32 nunca las descarga.
+function parseLink(raw) {
+  const s = raw.trim();
+  const sp = /^spotify:(track|album|playlist|episode|show|artist):([A-Za-z0-9]{22})$/.exec(s);
+  if (sp) return { service: "spotify", kind: sp[1], id: sp[2] };
+  let u;
+  try { u = new URL(/^[a-z]+:\/\//i.test(s) ? s : "https://" + s); } catch { return { error: "No es una dirección válida." }; }
+  if (!/^https?:$/.test(u.protocol)) return { error: "Solo se admiten enlaces http(s)." };
+  const host = u.hostname.toLowerCase().replace(/^(www|m|music)\./, "");
+  const vid = /^[A-Za-z0-9_-]{11}$/, lst = /^[A-Za-z0-9_-]{10,64}$/;
+  if (host === "youtu.be" || host === "youtube.com" || host === "youtube-nocookie.com") {
+    const seg = u.pathname.split("/").filter(Boolean);
+    let v = host === "youtu.be" ? seg[0] : u.searchParams.get("v");
+    if (!v && ["shorts", "embed", "live", "v"].includes(seg[0])) v = seg[1];
+    if (v && vid.test(v)) return { service: "youtube", kind: "video", id: v };
+    const list = u.searchParams.get("list");
+    if (list && lst.test(list)) return { service: "youtube", kind: "playlist", id: list };
+    return { error: "Enlace de YouTube no reconocido (se admiten vídeos, shorts y listas)." };
+  }
+  if (host === "open.spotify.com" || host === "play.spotify.com") {
+    const m = /^\/(?:intl-[a-z-]+\/)?(?:embed\/)?(track|album|playlist|episode|show|artist)\/([A-Za-z0-9]{22})\/?$/.exec(u.pathname);
+    if (m) return { service: "spotify", kind: m[1], id: m[2] };
+    return { error: "Enlace de Spotify no reconocido." };
+  }
+  if (host === "spotify.link" || host === "spotify.app.link")
+    return { error: "Los enlaces cortos de Spotify no se pueden resolver aquí. Ábralo en el navegador y copie la dirección open.spotify.com." };
+  return { error: "Solo se admiten enlaces de YouTube y Spotify." };
+}
+const KIND = { video: "Vídeo", playlist: "Lista", track: "Canción", album: "Álbum", episode: "Episodio", show: "Pódcast", artist: "Artista" };
+const linkUrl = (l) => l.service === "youtube"
+  ? (l.kind === "video" ? "https://www.youtube.com/watch?v=" + l.id : "https://www.youtube.com/playlist?list=" + l.id)
+  : "https://open.spotify.com/" + l.kind + "/" + l.id;
+const embedUrl = (l) => l.service === "youtube"
+  ? (l.kind === "video" ? "https://www.youtube-nocookie.com/embed/" + l.id : "https://www.youtube-nocookie.com/embed/videoseries?list=" + l.id)
+  : "https://open.spotify.com/embed/" + l.kind + "/" + l.id;
+// Metadatos mediante oEmbed oficial, consultado desde el navegador. Sin Internet no hay metadatos: no se inventan.
+async function oembed(l) {
+  const ep = l.service === "youtube" ? "https://www.youtube.com/oembed?format=json&url=" : "https://open.spotify.com/oembed?url=";
+  const ctl = new AbortController(); const t = setTimeout(() => ctl.abort(), 6000);
+  try {
+    const r = await fetch(ep + encodeURIComponent(linkUrl(l)), { signal: ctl.signal, referrerPolicy: "no-referrer", credentials: "omit" });
+    if (!r.ok) return { error: r.status === 401 || r.status === 403 ? "El propietario no permite insertar este contenido." : "El servicio no devolvió datos (" + r.status + ")." };
+    const d = await r.json();
+    return { title: typeof d.title === "string" ? d.title.slice(0, 120) : "", author: typeof d.author_name === "string" ? d.author_name : "",
+      thumb: typeof d.thumbnail_url === "string" && d.thumbnail_url.startsWith("https://") ? d.thumbnail_url : "" };
+  } catch { return { error: "Metadatos no disponibles: el teléfono/PC no tiene Internet en esta red o el servicio no respondió." }; }
+  finally { clearTimeout(t); }
+}
+function linkCard(l, meta, actions) {
+  const embedBox = h("div");
+  return h("div", { class: "stack" },
+    h("div", { class: "row" },
+      meta && meta.thumb ? h("img", { class: "thumb", src: meta.thumb, alt: "", referrerpolicy: "no-referrer" }) : null,
+      h("div", { class: "grow name" },
+        h("div", {}, (meta && meta.title) || l.title || "(sin título disponible)"),
+        h("div", { class: "sub" }, (l.service === "youtube" ? "YouTube" : "Spotify") + " · " + KIND[l.kind] + (meta && meta.author ? " · " + meta.author : "")),
+        meta && meta.error ? h("div", { class: "sub warn" }, meta.error) : null)),
+    h("div", { class: "row" },
+      h("a", { href: linkUrl(l), target: "_blank", rel: "noopener noreferrer" }, h("button", { tabindex: -1 }, "Abrir en " + (l.service === "youtube" ? "YouTube" : "Spotify"))),
+      h("button", { onclick: (e) => {
+        if (embedBox.firstChild) { embedBox.replaceChildren(); e.target.textContent = "Reproductor oficial"; return; }
+        e.target.textContent = "Cerrar reproductor";
+        embedBox.replaceChildren(h("iframe", { class: "embed", src: embedUrl(l), loading: "lazy", title: "Reproductor oficial",
+          height: l.service === "youtube" ? 220 : (l.kind === "track" || l.kind === "episode" ? 152 : 352),
+          allow: "autoplay; encrypted-media; fullscreen; picture-in-picture", allowfullscreen: true,
+          // YouTube rechaza los reproductores insertados que no envían el origen (error 153).
+          referrerpolicy: "strict-origin-when-cross-origin" }));
+      } }, "Reproductor oficial"),
+      actions),
+    embedBox);
+}
+function viewLinks() {
+  const input = h("input", { type: "url", placeholder: "Pegue un enlace de YouTube o Spotify", "aria-label": "Enlace" });
+  const result = h("div");
+  const list = h("div", { class: "stack" });
+  async function load() {
+    const r = await act(api("/api/links"));
+    if (!r) return;
+    list.replaceChildren(...(r.length ? r.map((l, i) => h("div", { class: "card", style: "margin:0" }, linkCard(l, null,
+      h("button", { class: "icon danger", "aria-label": "Borrar enlace", onclick: async () => {
+        if (confirm("¿Borrar este enlace?") && await act(api("/api/links/delete", { index: i }), "Enlace borrado")) load();
+      } }, "🗑")))) : [h("p", { class: "muted small" }, "No hay enlaces guardados.")]));
+  }
+  async function analyze(e) {
+    e.preventDefault();
+    const l = parseLink(input.value);
+    if (l.error) { result.replaceChildren(h("p", { class: "err small" }, l.error)); return; }
+    result.replaceChildren(h("p", { class: "muted small" }, h("span", { class: "spin" }), " Consultando metadatos…"));
+    const meta = await oembed(l);
+    result.replaceChildren(linkCard(l, meta, h("button", { class: "primary", onclick: async () => {
+      if (await act(api("/api/links/add", { ...l, title: meta.title || "" }), "Enlace guardado")) { input.value = ""; result.replaceChildren(); load(); }
+    } }, "Guardar")));
+  }
+  $view.replaceChildren(
+    h("section", { class: "card stack" }, h("h2", {}, "Añadir enlace"),
+      h("form", { class: "row", onsubmit: analyze }, h("div", { class: "grow" }, input), h("button", { class: "primary" }, "Analizar")),
+      result,
+      h("div", { class: "notice" },
+        h("b", {}, "¿Por qué no suena en el parlante? "),
+        "YouTube y Spotify no permiten que un microcontrolador descargue o decodifique su audio. ",
+        "El reproductor oficial suena en este teléfono o PC. Para oírlo en el parlante, ese teléfono/PC debe enviar su audio al parlante por otra vía ",
+        "(por ejemplo, un receptor Bluetooth conectado a la entrada AUX del parlante; vea la documentación). ",
+        "Aquí se guardan y organizan los enlaces; las canciones de la microSD sí suenan directamente por el ESP32.")),
+    h("section", { class: "card" }, h("h2", {}, "Enlaces guardados"), list));
+  load();
+}
+
+// ---------- ajustes ----------
+function viewSettings() {
+  const info = h("div", { class: "small stack" }, h("span", { class: "spin" }));
+  const name = h("input", { type: "text", maxlength: 24, id: "dn" });
+  const theme = h("select", { id: "th" }, h("option", { value: "auto" }, "Automático"), h("option", { value: "dark" }, "Oscuro"), h("option", { value: "light" }, "Claro"));
+  const ssid = h("input", { type: "text", maxlength: 32, id: "ssid", autocomplete: "off", list: "nets" });
+  const nets = h("datalist", { id: "nets" });
+  const wpass = h("input", { type: "password", maxlength: 63, id: "wp", autocomplete: "new-password" });
+  const scanBtn = h("button", { type: "button", onclick: scan }, "Buscar redes");
+  const apPass = h("input", { type: "password", minlength: 8, maxlength: 63, id: "ap", autocomplete: "new-password" });
+  const cur = h("input", { type: "password", id: "cp", autocomplete: "current-password" });
+  const np = h("input", { type: "password", minlength: 8, maxlength: 64, id: "np", autocomplete: "new-password" });
+  const fw = h("input", { type: "file", accept: ".bin", id: "fw" });
+  const fwMsg = h("div", { class: "small muted" });
+
+  async function load() {
+    const s = await act(api("/api/settings"));
+    if (!s) return;
+    name.value = s.deviceName; theme.value = s.theme; ssid.value = s.ssid;
+    const st = S.status || {}, n = st.net || {};
+    const line = (k, v) => h("div", { class: "row" }, h("span", { class: "muted grow" }, k), h("span", {}, v));
+    info.replaceChildren(
+      line("Firmware", st.version || "—"),
+      line("Red doméstica", n.sta ? n.ssid + " (" + n.rssi + " dBm)" : (n.staConfigured ? "Desconectado de " + n.ssid : "No configurada")),
+      n.ip ? line("Dirección", h("span", {}, "http://" + n.ip + "  ·  http://" + s.host + ".local")) : null,
+      line("Punto de acceso", n.ap ? s.apSsid + " → http://" + n.apIp : "Inactivo"),
+      line("Internet", n.internet ? "Disponible" : "No disponible"),
+      line("microSD", st.sd && st.sd.ok ? st.sd.usedMB + " / " + st.sd.totalMB + " MB" : "No detectada"),
+      line("Memoria libre", st.heap ? Math.round(st.heap / 1024) + " KB (mínimo " + Math.round(st.heapMin / 1024) + " KB)" : "—"),
+      line("Espacio para listas", Math.round(s.fsFree / 1024) + " KB"),
+      line("Encendido desde", st.uptime ? Math.floor(st.uptime / 3600) + " h " + Math.floor(st.uptime % 3600 / 60) + " min" : "—"));
+  }
+  async function scan() {
+    scanBtn.disabled = true; scanBtn.textContent = "Buscando…";
+    for (let i = 0; i < 15; i++) {
+      const r = await act(api("/api/wifi/scan"));
+      if (!r) break;
+      if (!r.scanning) {
+        nets.replaceChildren(...r.networks.sort((a, b) => b.rssi - a.rssi).map((n) => h("option", { value: n.ssid }, n.rssi + " dBm" + (n.open ? " · abierta" : ""))));
+        toast(r.networks.length + " redes encontradas. Elija una en el campo «Red».");
+        break;
+      }
+      await new Promise((ok) => setTimeout(ok, 1000));
+    }
+    scanBtn.disabled = false; scanBtn.textContent = "Buscar redes";
+  }
+  const restartingMsg = (extra) => toast("Reiniciando el dispositivo…" + (extra ? " " + extra : ""));
+  const form = (title, onsubmit, ...kids) => h("section", { class: "card" }, h("h2", {}, title),
+    h("form", { class: "stack", onsubmit: (e) => { e.preventDefault(); onsubmit(); } }, ...kids));
+
+  $view.replaceChildren(
+    h("section", { class: "card" }, h("h2", {}, "Estado"), info),
+    form("Dispositivo", async () => {
+      if (await act(api("/api/settings", { deviceName: name.value, theme: theme.value }), "Guardado")) { applyTheme(theme.value); store.set("usbm_theme", theme.value); refresh(); }
+    }, h("div", {}, h("label", { for: "dn" }, "Nombre"), name), h("div", {}, h("label", { for: "th" }, "Tema"), theme),
+      h("p", { class: "small muted" }, "El nombre también se usa para la red propia y la dirección .local tras reiniciar."),
+      h("button", { class: "primary" }, "Guardar")),
+    form("Red Wi-Fi doméstica", async () => {
+      if (!confirm("El dispositivo se reiniciará e intentará conectarse a «" + (ssid.value || "ninguna red") + "». Si no lo consigue, volverá a crear su propia red. ¿Continuar?")) return;
+      if (await act(api("/api/wifi", { ssid: ssid.value.trim(), password: wpass.value }))) restartingMsg("Búsquelo después en su red doméstica.");
+    }, h("div", {}, h("label", { for: "ssid" }, "Red (vacío = usar solo la red propia del equipo)"), h("div", { class: "row" }, h("div", { class: "grow" }, ssid), scanBtn), nets),
+      h("div", {}, h("label", { for: "wp" }, "Clave de la red (se guarda en el equipo y no se vuelve a mostrar)"), wpass),
+      h("button", { class: "primary" }, "Guardar y reiniciar")),
+    form("Red propia del equipo (punto de acceso)", async () => {
+      if (await act(api("/api/appass", { password: apPass.value }))) { apPass.value = ""; restartingMsg(); }
+    }, h("div", {}, h("label", { for: "ap" }, "Nueva clave WPA2 (8-63 caracteres)"), apPass), h("button", { class: "primary" }, "Cambiar y reiniciar")),
+    form("Clave del panel", async () => {
+      const r = await act(api("/api/password", { current: cur.value, new: np.value }), "Clave cambiada. Las demás sesiones se han cerrado.");
+      if (r) { token = r.token; store.set("usbm_token", token); cur.value = np.value = ""; }
+    }, h("div", {}, h("label", { for: "cp" }, "Clave actual"), cur), h("div", {}, h("label", { for: "np" }, "Nueva clave (8-64)"), np), h("button", { class: "primary" }, "Cambiar")),
+    form("Actualizar firmware", async () => {
+      const f = fw.files[0];
+      if (!f) return toast("Elija el archivo firmware.bin", true);
+      if (!confirm("La música se detendrá y el equipo se reiniciará. ¿Continuar?")) return;
+      try { await upload("/api/ota", f, (x) => (fwMsg.textContent = "Enviando… " + Math.round(x * 100) + "%")); fwMsg.textContent = "Firmware instalado. Reiniciando…"; }
+      catch (e) { fwMsg.textContent = ""; toast(e.message, true); }
+    }, h("div", {}, h("label", { for: "fw" }, "Archivo .pio/build/<entorno>/firmware.bin"), fw), fwMsg, h("button", { class: "primary" }, "Instalar")),
+    h("section", { class: "card row" },
+      h("button", { onclick: async () => { if (confirm("¿Reiniciar el dispositivo?") && await act(api("/api/reboot", {}))) restartingMsg(); } }, "Reiniciar"),
+      h("button", { class: "danger", onclick: async () => { await api("/api/logout", {}).catch(() => {}); logoutLocal(); } }, "Cerrar sesión")));
+  load();
+}
+
+// ---------- arranque ----------
+token ? start() : renderLogin();
+</script>
+</body>
+</html>
